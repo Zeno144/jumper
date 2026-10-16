@@ -45,26 +45,48 @@
   -WindowStyle Hidden`), target now 10 100 iterations; old logs kept as `train_gpu_*_run1.txt`.
   Launch long runs detached so closing a terminal cannot kill them.
 
-### Day 2 — Oct 16: Brush mesh + check training
-- [ ] Check overnight training progress:
+### Day 2 — Oct 16: Brush mesh + check training ✅ COMPLETE
+- [x] Check overnight training progress:
   ```powershell
   Get-Content .\train_gpu_stdout.txt | Select-String "Iteration time|ETA" | Select-Object -Last 4
   ```
-- [ ] Add a brush/mop geom to `assets/jumper/jumper.xml` attached to the `display_module_link`
+- [x] Add a brush/mop geom to `assets/jumper/jumper.xml` attached to the `display_module_link`
   body (front face of the robot at approximately x=0.08, z=0.05 relative to base). A
   simple cylinder pointing down works. No new joint needed — it is purely visual.
-- [ ] Pick a skin color scheme for the "cleaning bot" look (see Skin section below)
+- [x] Pick a skin color scheme for the "cleaning bot" look (see Skin section below)
+  → done as white shell + sky-blue forearms/pads in `jumper.xml`; brush = handle, block,
+  bristles under `display_module_link`, bristles ~4–7 mm above the floor while walking.
+- [x] Training finished: `logs/jumper/jumper.tripod/2026-10-15_23-29-11/model_10099.pt`
+  tracks 0.25 m/s forward at 0.237 m/s.
+- Note: always pass `--command VX VY YAW` when filming. Without it the replay picks its
+  own command, and on the default scenes the spawn yaw is random too, so a clip can walk
+  backwards.
 
-### Day 3 — Oct 17: Dirt particles + scene
-- [ ] Add a set of flat colored discs ("dirt patches") as free-floating passive bodies in
+### Day 3 — Oct 17: Dirt particles + scene ✅ COMPLETE (done Oct 16)
+- [x] Built as a registered scene, `scenes/dirty_floor.py` (`--scene dirty_floor`), not a
+  scene XML — that is how this repo adds scenes. 120 crumbs (1.6–3.2 cm, 8–14 mm tall,
+  4 g, free joints) in a field x 0.25–1.6 m, y ±0.35 m ahead of the spawn, fixed seed.
+  The brush bristles collide with crumbs only (private bit, set in the scene, so
+  training is untouched); the scene also pins the spawn to the origin facing +x.
+  Measured over 7 s at 0.25 m/s: 32 crumbs moved > 1 cm, 15 > 5 cm, max 84 cm; gait
+  unaffected (0.235 vs 0.237 m/s, no falls).
+- ~~Original idea:~~ Add a set of flat colored discs ("dirt patches") as free-floating passive bodies in
   a new custom scene XML — small cylinders resting on the floor that the robot walks through
   and scatters. These use MuJoCo's free joint so they react to contact without affecting
   the policy at all.
-- [ ] Choose a scene. Recommendation: **studio** (neutral grey, makes the robot and dirt
+- [x] Choose a scene → warm light floor with the studio lights (in `dirty_floor`). Original note: **studio** (neutral grey, makes the robot and dirt
   patches pop on camera) or a custom flat floor with a light tile texture.
-- [ ] Test that the dirt patches scatter when the robot crosses them.
+- [x] Test that the dirt patches scatter when the robot crosses them → `dirt_check.mp4`.
+  Filming command:
+  ```
+  play.py --task jumper.tripod --scene dirty_floor --headless --steps 350 --command 0.25 0 0
+    --video dirt_check.mp4 --video-distance 0.9 --video-azimuth 120 --video-elevation -30
+  ```
 
 ### Day 4 — Oct 18: Sweep pattern scripting
+- [ ] **Put it at `tools/sweep.py`, not `scripts/sweep.py`** — `tests/test_log_layout.py`
+  allows exactly five files in `scripts/` (the existing command script is `tools/readme_media.py`).
+  Keep the sweep inside the dirt field (x 0.25–1.6 m, y ±0.35 m).
 - [ ] Write a `--command-script` file (a small Python function of time `t`) that drives the
   robot in a back-and-forth sweeping pattern: move forward, turn 180°, move back, repeat.
   This does not require retraining — `play.py --command-script sweep.py` injects the command

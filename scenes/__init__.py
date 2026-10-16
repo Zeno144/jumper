@@ -79,6 +79,14 @@ register(
     use="watching",
 )
 register(
+    id="dirty_floor",
+    description="**adds crumbs**: a light floor strewn with loose dirt the feet and the brush push",
+    tags=("prop", "presentation"),
+    # `watching`: free bodies scattered around the spawn point are a thing to
+    # film a cleaning concept on, not something any task trains against.
+    use="watching",
+)
+register(
     id="swing",
     description="**adds a swing**: an A-frame and a plank seat the robot can stand on",
     tags=("prop", "outdoor"),
