@@ -46,7 +46,9 @@ def football(tmp_path_factory) -> Path:
 
 def test_the_training_scenes_are_withheld() -> None:
     withheld = {s for s in scenes.list_ids() if ex.refuse(s) is not None}
-    assert withheld == {"plain", "rough", "soft"}
+    # The two dirt scenes are refused for their spawn pin, a reset event
+    # (`dirty_floor._face_forward`), not for `use`: they are watching scenes.
+    assert withheld == {"plain", "rough", "soft", "dirty_floor", "dirty_stairs"}
 
 
 def test_the_exporter_reads_the_declaration_rather_than_agreeing_with_it(monkeypatch) -> None:

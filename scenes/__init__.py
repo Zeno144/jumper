@@ -87,6 +87,13 @@ register(
     use="watching",
 )
 register(
+    id="dirty_stairs",
+    description="**adds steps and crumbs**: a short flight of robot-sized steps strewn with loose dirt",
+    tags=("prop", "presentation"),
+    # `watching`, as `dirty_floor`: a set to film the cleaning concept on.
+    use="watching",
+)
+register(
     id="swing",
     description="**adds a swing**: an A-frame and a plank seat the robot can stand on",
     tags=("prop", "outdoor"),
