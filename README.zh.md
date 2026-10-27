@@ -1,4 +1,4 @@
-<!-- tracks: README.md @ sha256:6c35e964fc575f2d -->
+<!-- tracks: README.md @ sha256:415a264b39ff86b4 -->
 
 ![跳跳](docs/media/jumper-hero-zh.png)
 
@@ -44,6 +44,37 @@
 | [**公园泵道**](https://github.com/KingKongRobotics/jumper-design/blob/be74e0f2e5e2433d24a3a7b1c1aa0dbeae480356/library/maps/park-pump-track.map) | [**卧室**](https://github.com/KingKongRobotics/jumper-design/blob/be74e0f2e5e2433d24a3a7b1c1aa0dbeae480356/library/maps/bedroom.map) | [**足球**](https://github.com/KingKongRobotics/jumper-design/blob/be74e0f2e5e2433d24a3a7b1c1aa0dbeae480356/library/maps/soccer.map) |
 
 [浏览全部场景](https://github.com/KingKongRobotics/jumper-design/tree/main/library/maps)
+
+## 清洁概念
+
+为 2026 螃蟹机器人挑战赛制作的仿真概念：跳跳头上装一把刷子，清扫地面，再爬上一段满是碎屑的台阶。
+[观看视频 →](https://youtu.be/pDr9zQoPgvQ)
+
+行走来自训练好的策略。清洁本身没有单独的策略：机器人沿脚本路线移动，刷子与碎屑发生碰撞，把碎屑推开。
+
+- **刷子**是 `assets/jumper/jumper.xml` 中 `display_module_link` 下的纯视觉几何体。训练时它和其他不参与碰撞的几何体一起被剥离，因此现有步态无需改动。
+- **`--scene dirty_floor`** 在机器人前方撒下 120 块松散碎屑，并开启刷毛与碎屑之间专用的碰撞通道。它还把出生点固定在原点、朝向碎屑区。
+- **`--scene dirty_stairs`** 以同一地面为基础：四级 2 cm 高的台阶，尺寸取自 `rough` 训练地形，地面、踏面和平台上共有 116 块碎屑。
+- **`tools/sweep.py`** 驱动机器人在碎屑区做往返式清扫，刷子始终在前。**`tools/stairs_stop.py`** 爬上台阶并停在平台上。
+
+先训练三足步态，再在 `rough` 地形上微调，让它学会爬台阶（RTX 5060 Ti：微调用时 5.5 小时）：
+
+```bash
+python scripts/train.py --task jumper.tripod --backend warp --device cuda --num_envs 4096 --headless
+python scripts/train.py --task jumper.tripod --scene rough --backend warp --device cuda \
+    --num_envs 4096 --headless --resume --checkpoint <run>/model_10099.pt --max-iterations 3000
+```
+
+录制清扫和爬台阶。这里请使用 native 后端：有 120 块自由碎屑时，它的回放速度约为 warp 的 14 倍。
+
+```bash
+python scripts/play.py --task jumper.tripod --scene dirty_floor --headless --backend native \
+    --device cpu --steps 1750 --command-script tools/sweep.py --video sweep.mp4 \
+    --video-width 1920 --video-height 1080
+python scripts/play.py --task jumper.tripod --scene dirty_stairs --headless --backend native \
+    --device cpu --steps 525 --command-script tools/stairs_stop.py --video stairs.mp4 \
+    --video-width 1920 --video-height 1080
+```
 
 ## 相关项目与指南
 

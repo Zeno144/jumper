@@ -43,6 +43,47 @@ This repo is Jumper’s AI toolkit for appearance, motion, and scene creation. O
 
 [Browse all maps](https://github.com/KingKongRobotics/jumper-design/tree/main/library/maps)
 
+## Cleaning concept
+
+A simulation concept for the Crab Robot Challenge 2026: Jumper with a brush on its head,
+sweeping a floor and climbing a short flight of dirty steps.
+[Watch the video →](https://youtu.be/pDr9zQoPgvQ)
+
+The walking is a trained policy. The cleaning has no policy of its own: the robot follows a
+scripted path, and the brush pushes the crumbs aside because it collides with them.
+
+- **The brush** is visual-only geometry under `display_module_link` in
+  `assets/jumper/jumper.xml`. Training strips it with the other non-colliding geoms, so the
+  existing gaits work unchanged.
+- **`--scene dirty_floor`** spreads 120 loose crumbs ahead of the robot and turns on a collision
+  channel between the bristles and the crumbs. It also fixes the spawn at the origin, facing the
+  field.
+- **`--scene dirty_stairs`** builds on the same floor: four 2 cm steps sized from the `rough`
+  training terrain, with 116 crumbs on the floor, the treads and the landing.
+- **`tools/sweep.py`** drives a lawnmower sweep over the field, with the brush always leading.
+  **`tools/stairs_stop.py`** climbs the steps and stops on the landing.
+
+Train the tripod gait, then fine-tune it on the `rough` terrain so it can climb steps
+(RTX 5060 Ti: the fine-tune took 5.5 h):
+
+```bash
+python scripts/train.py --task jumper.tripod --backend warp --device cuda --num_envs 4096 --headless
+python scripts/train.py --task jumper.tripod --scene rough --backend warp --device cuda \
+    --num_envs 4096 --headless --resume --checkpoint <run>/model_10099.pt --max-iterations 3000
+```
+
+Record the sweep and the climb. Use the native backend here: with 120 free crumbs it replays
+about 14 times faster than warp.
+
+```bash
+python scripts/play.py --task jumper.tripod --scene dirty_floor --headless --backend native \
+    --device cpu --steps 1750 --command-script tools/sweep.py --video sweep.mp4 \
+    --video-width 1920 --video-height 1080
+python scripts/play.py --task jumper.tripod --scene dirty_stairs --headless --backend native \
+    --device cpu --steps 525 --command-script tools/stairs_stop.py --video stairs.mp4 \
+    --video-width 1920 --video-height 1080
+```
+
 ## Where to find things
 
 | Resource | Purpose |

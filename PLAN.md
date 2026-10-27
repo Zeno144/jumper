@@ -83,37 +83,90 @@
     --video dirt_check.mp4 --video-distance 0.9 --video-azimuth 120 --video-elevation -30
   ```
 
-### Day 4 — Oct 18: Sweep pattern scripting
-- [ ] **Put it at `tools/sweep.py`, not `scripts/sweep.py`** — `tests/test_log_layout.py`
-  allows exactly five files in `scripts/` (the existing command script is `tools/readme_media.py`).
-  Keep the sweep inside the dirt field (x 0.25–1.6 m, y ±0.35 m).
-- [ ] Write a `--command-script` file (a small Python function of time `t`) that drives the
-  robot in a back-and-forth sweeping pattern: move forward, turn 180°, move back, repeat.
-  This does not require retraining — `play.py --command-script sweep.py` injects the command
-  directly into the replay.
-- [ ] Test the sweep looks natural and covers the dirt patches.
+### Day 4 — Oct 18: Sweep pattern scripting ✅ COMPLETE (done Oct 19)
+- [x] `tools/sweep.py` (not `scripts/` — `tests/test_log_layout.py` allows five files there).
+  Lawnmower: 3 lanes along x (y = 0, +0.25, −0.25), 90° turns on the spot at 0.6 rad/s,
+  each followed by a 1 s stand so the heading settles; brush always leads. ~33 s → `--steps 1750`.
+- [x] **Slowness solved: film `dirty_floor` on `--backend native --device cpu`.** Warp with
+  one env and 120 crumbs runs 1.2 fps vs 17 fps native (200 steps: 178 s vs 23 s). The
+  contact budget was *not* the cause — `njmax = 512 + 8*N` was slower (0.9 fps) and
+  overflowed (needs ~2000), so `scenes/dirty_floor.py` stays at `32*N`.
+- [x] Calibrated on native: `TURN_GAIN = 0.975`, `LINK_LAG = 0.24 s`. `play.py` has no
+  `--seed`, so every replay is randomised and each turn varies ±4°. Over seeds 1/2/3
+  lane 3 ran at −5.0/+2.7/+2.1°; 66–73 of 120 crumbs moved > 1 cm.
+- [x] New `sweep.mp4` (1051 frames, 35 s, 640×480 preview) — looks right. For the final
+  film add `--video-width 1920 --video-height 1080`, and re-take if a turn drifts.
+- Filming command (~110 s):
+  ```
+  play.py --task jumper.tripod --scene dirty_floor --headless --backend native --device cpu
+    --steps 1750 --command-script tools/sweep.py --video sweep.mp4
+    --video-distance 1.8 --video-azimuth 150 --video-elevation -50
+  ```
 
-### Day 5 — Oct 19: Full gait checkpoint check + retrain if needed
-- [ ] Evaluate the overnight checkpoint. If the gait is solid, proceed to filming.
-  If not, let it keep running while you film earlier sections.
-- [ ] Quick evaluation check:
+- **Option, not built:** add a `--seed N` flag to `scripts/play.py` (it would set
+  `env_cfg.seed` before `ManagerBasedRlEnv` is built; mjlab already honours a fixed seed —
+  seeded probe runs were identical). Gives every take the same path and makes the README
+  command reproduce the video exactly. Cost: a framework change in a shared script rather
+  than our own files. Without it, re-take a crooked sweep (~2 min each).
+
+### Day 5 — Oct 19: Full gait checkpoint check + retrain if needed ✅ COMPLETE (done Oct 21)
+- [x] Evaluated `model_10099.pt` (from `2026-10-15_23-29-11`): gait is solid, no retrain.
+  1000 steps at 0.25 m/s on the default scene: speed 0.21–0.25 m/s throughout (mostly
+  0.22–0.23), no falls or resets, body level and brush clear of the floor in every frame checked.
+- [x] Quick evaluation check → `gait_check.mp4` (1920×1080, 30 fps, 601 frames, ~60 s to
+  render on native CPU). Command used (added `--backend native --device cpu --command`):
   ```powershell
   .venv\Scripts\python.exe scripts/play.py --task jumper.tripod --headless `
-    --steps 1000 --video gait_check.mp4 `
+    --backend native --device cpu --steps 1000 --command 0.25 0 0 --video gait_check.mp4 `
     --video-width 1920 --video-height 1080 --video-fps 30
   ```
 
-### Day 6 — Oct 20: Filming day 1 — individual shots
-- [ ] Shot 1 (hook): robot walks into frame and the brush sweeps a dirty floor — 3 s
-- [ ] Shot 2: wide overhead angle showing the full sweep pattern — 8 s
-- [ ] Shot 3: close-up of the brush and the dirt patches scattering — 5 s
-- [ ] Shot 4: side-view of the tripod gait in action — 5 s
+### Day 6 — Oct 20: Filming day 1 — individual shots ✅ COMPLETE (done Oct 19)
+All four in `shots/` (untracked), 1920×1080 @ 30 fps, rendered in parallel in ~2.5 min.
+Raw takes run longer than the cut; trim in the editor.
+- [x] Shot 1 (hook) `shot1_hook.mp4`, 5.2 s: fixed camera, front three-quarter; the robot
+  walks toward the lens through the crumbs and ends close-up.
+- [x] Shot 2 (overhead sweep) `shot2_sweep.mp4`, 35 s: following, high, the whole lawnmower
+  sweep — cut to 8 s or speed it up.
+- [x] Shot 3 (brush close-up) `shot3_brush.mp4`, 7 s: following from the front, low; the
+  brush and the crumbs scattering fill the frame.
+- [x] Shot 4 (side gait) `shot4_side.mp4`, 7 s: following, side-on at 0.30 m/s.
+- Common flags: `--task jumper.tripod --scene dirty_floor --headless --backend native
+  --device cpu --video-width 1920 --video-height 1080`, then per shot:
+  ```
+  1: --steps 260  --command 0.25 0 0 --no-video-follow --video-distance 2.1
+     --video-azimuth 160 --video-elevation -12 --video-lookat-height 0.06
+  2: --steps 1750 --command-script tools/sweep.py --video-distance 3.0
+     --video-azimuth 150 --video-elevation -72
+  3: --steps 350  --command 0.20 0 0 --video-distance 0.45 --video-azimuth 160 --video-elevation -18
+  4: --steps 350  --command 0.30 0 0 --video-distance 0.9  --video-azimuth 90  --video-elevation -8
+  ```
+- Shot 7 (second sweep pass, floor cleaner) and shot 8 (standing pose, 3/4) from the
+  shot list are still to film.
 
 ### Day 7 — Oct 21: "Building it with Claude Code" screen capture
+- Talking points (debugging stories, stairs results, why full-size stairs are out of
+  reach) are collected in `TALKING_POINTS.md`; add to it as new ones come up.
 - [ ] Record a 15–20 second screen capture of the Claude Code session: show a funny failed
   attempt (the OOM crash with 2048 envs on CPU, or the GPU backend refusing without MSVC),
   then the fix, then the training progress.
 - [ ] This is the "sharing ideas, debugging and funny setbacks" element the judges reward.
+
+### Added Oct 21: Stairs shot
+- [x] `scenes/dirty_stairs.py` (`--scene dirty_stairs`): 4 steps, 0.02 m risers, 0.264 m
+  treads (sized from `rough.py`), 0.8 m landing, 116 crumbs on floor/treads/landing.
+  Flat checkpoint `model_10099.pt` already climbs it at 0.13–0.25 m/s.
+- [x] Stairs fine-tune finished 23:40 → `model_13098.pt`: terrain level mean 4.10, max 5
+  (~2.6 cm steps), episode length 990, no errors. (Started 18:05, detached, PID 7728): `--scene rough`, warp/cuda,
+  4096 envs, resumed from `model_10099.pt`, 3000 iters at ~5.2 s/iter (rough terrain is
+  ~2x slower than flat) → ETA ~23:00. Log dir `logs/jumper/jumper.tripod/2026-10-21_18-05-28`,
+  output `train_stairs_stdout.txt`. Watch `Curriculum/terrain/level`.
+- [x] Stairs shot → `shots/shot_stairs_D.mp4` (1080p, 10.5 s): `model_13098.pt`, climbs
+  and stops mid-landing via `tools/stairs_stop.py`. Same camera as take B:
+  `--steps 525 --command-script tools/stairs_stop.py --video-distance 1.3
+  --video-azimuth 140 --video-elevation -16`.
+- [ ] Optional: try taller steps; try `RISER` 0.025–0.03 if
+  the fine-tune gets past terrain level 4.
 
 ### Day 8 — Oct 22: Video assembly
 - [ ] Assemble the shots in order using a free editor (DaVinci Resolve is free on Windows).
@@ -131,7 +184,8 @@
 - [ ] Push the XML change (brush attachment) and the sweep.py script as a single commit.
 
 ### Day 10 — Oct 24: YouTube upload + post
-- [ ] Upload the video to YouTube as Public.
+- [x] Upload the video to YouTube — scheduled Public for 1 pm Oct 27:
+  https://youtu.be/pDr9zQoPgvQ
 - [ ] Title, description and tags (see below).
 - [ ] Post the link on the challenge platform. Done by Oct 25.
 
